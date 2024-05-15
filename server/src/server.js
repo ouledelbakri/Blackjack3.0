@@ -23,7 +23,6 @@ app.use(
 
 app.use("/auth", UserRouter);
 
-// mongoose.connect("mongodb://localhost:27017/authentfication");
 mongoose.connect(
   "mongodb+srv://blackjack:hwyon2QysbJCf2Sl@blackjackv03.gqtn4wb.mongodb.net/auth?retryWrites=true&w=majority&appName=BLACKJACKV03"
 );

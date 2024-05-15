@@ -28,7 +28,7 @@ export class GameSocket {
       try {
         const table = new Table();
         const player = table.addPlayer(name, "", balance, socket.id);
-
+        console.info(`player id: ${player.id}`);
         this.tables[table.id] = table;
         socket.join(table.id);
 

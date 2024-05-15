@@ -1,156 +1,8 @@
-// import React, { useCallback, useEffect, useState } from "react";
-// import { useNavigate } from "react-router-dom";
-// import { useForm } from "react-hook-form";
-// import axios from "axios";
-// import {
-//   CheckboxInputWrapper,
-//   CheckboxLabel,
-//   InputWrapper,
-//   CheckboxInput,
-//   ErrorMsg,
-//   Input,
-//   Label,
-//   Form,
-// } from "./Manager.styled";
-// import { SocketEmit, SocketOn, Socket } from "../../assets/constants";
-// import { StyledBtn } from "../App/App.styled";
-// import { game } from "../../game-elements/game";
-
-// export const PlayerInfos = () => {
-//   const {
-//     register,
-//     handleSubmit,
-//     formState: { errors },
-//     watch,
-//     setError,
-//   } = useForm();
-//   const [disabled, setDisabled] = useState(false);
-//   const navigate = useNavigate();
-//   const [userData, setUserData] = useState({});
-
-//   const onJoinTable = useCallback((name, balance, id) => {
-//     id
-//       ? game.emit[SocketEmit.JoinTable](id, name, balance)
-//       : game.emit[SocketEmit.CreateTable](name, balance);
-//   }, []);
-
-//   const onSubmit = useCallback(
-//     (data) => {
-//       setDisabled(true);
-//       const { name, balance, joinExistingTable, tableId } = data;
-//       if (joinExistingTable && !tableId) {
-//         return;
-//       }
-//       onJoinTable(name, balance, joinExistingTable ? tableId : undefined);
-//     },
-//     [onJoinTable]
-//   );
-
-//   useEffect(() => {
-//     const handleTableCreated = (table, player) => {
-//       game.onTableCreated(JSON.parse(table), JSON.parse(player));
-//       if (game.table && game.player) {
-//         navigate(`/table?id=${game.table.id}`);
-//       }
-//       game.modalUpdate(true);
-//     };
-
-//     const handleError = () => {
-//       setDisabled(false);
-//       setError("tableId", { message: "Invalid table ID" });
-//       const tableIdInput = document.querySelector('input[name="tableId"]');
-//       if (tableIdInput) {
-//         tableIdInput.value = "";
-//       }
-//     };
-
-//     Socket.on(SocketOn.TableCreated, handleTableCreated);
-//     Socket.on(SocketOn.Error, handleError);
-
-//     return () => {
-//       Socket.off(SocketOn.TableCreated, handleTableCreated);
-//       Socket.off(SocketOn.Error, handleError);
-//     };
-//   }, [navigate, setError]);
-
-//   return (
-//     <Form onSubmit={handleSubmit(onSubmit)}>
-//       <InputWrapper>
-//         {errors.name && <ErrorMsg>{errors.name.message}</ErrorMsg>}
-//         <Input
-//           autoComplete="off"
-//           className={`${watch("name") ? "filled" : ""}`}
-//           type="text"
-//           {...register("name", {
-//             required: "Name is required",
-//             minLength: {
-//               value: 3,
-//               message: "Name should be at least 3 characters",
-//             },
-//           })}
-//         />
-//         <Label>Name:</Label>
-//       </InputWrapper>
-//       <InputWrapper>
-//         {errors.balance && <ErrorMsg>{errors.balance.message}</ErrorMsg>}
-//         <Input
-//           autoComplete="off"
-//           className={`${watch("balance") ? "filled" : ""}`}
-//           // type="number"
-//           {...register("balance", {
-//             required: "Balance is required",
-//             min: {
-//               value: 100,
-//               message: "Minimum balance should be 100",
-//             },
-//             pattern: {
-//               value: /^\d+$/,
-//               message: "Invalid balance format. Enter a number",
-//             },
-//           })}
-//         />
-//         <Label>Balance:</Label>
-//       </InputWrapper>
-//       <CheckboxInputWrapper>
-//         <CheckboxInput
-//           id="checkbox"
-//           type="checkbox"
-//           className="checkbox-input"
-//           {...register("joinExistingTable")}
-//         />
-//         <label className="fake-check" htmlFor="checkbox"></label>
-
-//         <CheckboxLabel>Join table</CheckboxLabel>
-//       </CheckboxInputWrapper>
-//       {watch("joinExistingTable") && (
-//         <InputWrapper>
-//           {errors.tableId && <ErrorMsg>{errors.tableId.message}</ErrorMsg>}
-//           <Input
-//             autoComplete="off"
-//             className={`${watch("tableId") ? "filled" : ""}`}
-//             type="text"
-//             {...register("tableId", {
-//               required: "Table ID is required",
-//             })}
-//           />
-//           <Label>Table id:</Label>
-//         </InputWrapper>
-//       )}
-//       <StyledBtn
-//         type="submit"
-//         className="button buttonBlue"
-//         disabled={disabled}
-//       >
-//         {watch("joinExistingTable") ? "Join table" : "Create a new table"}
-//       </StyledBtn>
-//     </Form>
-//   );
-// };
-
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import axios from "axios";
+import Web3 from "web3";
 import {
   CheckboxInputWrapper,
   CheckboxLabel,
@@ -161,9 +13,12 @@ import {
   Label,
   Form,
 } from "./Manager.styled";
-import { SocketEmit, SocketOn, Socket } from "../../assets/constants";
 import { StyledBtn } from "../App/App.styled";
+import { SocketEmit, SocketOn, Socket } from "../../assets/constants";
 import { game } from "../../game-elements/game";
+import contractABI from "../../../blockchain/build/contracts/JeuBlackjack.json";
+
+const contractAddress = contractABI.networks[1715290952044].address;
 
 export const PlayerInfos = () => {
   const {
@@ -171,11 +26,43 @@ export const PlayerInfos = () => {
     handleSubmit,
     formState: { errors },
     watch,
+    setValue,
     setError,
   } = useForm();
   const [disabled, setDisabled] = useState(false);
   const navigate = useNavigate();
   const [userData, setUserData] = useState({});
+  const [tokenAmount, setTokenAmount] = useState("");
+  const web3 = new Web3(window.ethereum);
+
+  const buyTokens = async () => {
+    if (!tokenAmount) {
+      alert("Please enter the amount of tokens you want to buy.");
+      return;
+    }
+
+    try {
+      const contract = new web3.eth.Contract(contractABI.abi, contractAddress);
+      const accounts = await web3.eth.getAccounts();
+      const amountInWei = web3.utils.toWei(tokenAmount, "ether");
+      const response = await contract.methods.buyTokens(amountInWei).send({
+        from: accounts[0],
+        value: amountInWei,
+        gasPrice: web3.utils.toWei("10", "gwei"),
+      });
+      console.log(tokenAmount);
+      console.log(amountInWei);
+      console.log("Tokens bought:", response);
+      alert("Tokens purchased successfully!");
+    } catch (error) {
+      console.error("Error buying tokens:", error);
+      alert("Failed to buy tokens. Check console for details.");
+    }
+  };
+
+  useEffect(() => {
+    register("tokenAmount");
+  }, [register]);
 
   const onJoinTable = useCallback((name, balance, id) => {
     id
@@ -237,6 +124,27 @@ export const PlayerInfos = () => {
 
   return (
     <Form onSubmit={handleSubmit(onSubmit)}>
+      <InputWrapper>
+        <Input
+          type="tokenAmount"
+          placeholder="Enter token amount"
+          className={`${watch("tokenAmount") ? "filled" : ""}`}
+          {...register("tokenAmount")}
+          value={tokenAmount}
+          onChange={(e) => {
+            setTokenAmount(e.target.value);
+            setValue("tokenAmount", e.target.value); // Ensure it syncs with React Hook Form
+          }}
+        />
+        <Label>Token Amount</Label>
+      </InputWrapper>
+      <StyledBtn
+        type="button"
+        onClick={buyTokens}
+        disabled={!tokenAmount || disabled}
+      >
+        Buy Tokens
+      </StyledBtn>
       <CheckboxInputWrapper>
         <CheckboxInput
           id="checkbox"
@@ -245,7 +153,6 @@ export const PlayerInfos = () => {
           {...register("joinExistingTable")}
         />
         <label className="fake-check" htmlFor="checkbox"></label>
-
         <CheckboxLabel>Join table</CheckboxLabel>
       </CheckboxInputWrapper>
       {watch("joinExistingTable") && (
@@ -272,3 +179,5 @@ export const PlayerInfos = () => {
     </Form>
   );
 };
+
+export default PlayerInfos;

@@ -7,9 +7,10 @@ import nodemailer from "nodemailer";
 const router = express.Router();
 
 router.post("/signup", async (req, res) => {
-  const { username, email, password } = req.body;
+  const { username, email, password, ethereumId } = req.body;
   const userByEmail = await User.findOne({ email });
   const userByUsername = await User.findOne({ username });
+  const userByEthereumId = await User.findOne({ ethereumId });
 
   if (userByEmail) {
     return res.status(409).json({ message: "Email is already in use" });
@@ -18,12 +19,15 @@ router.post("/signup", async (req, res) => {
   if (userByUsername) {
     return res.status(409).json({ message: "Username is already in use" });
   }
-
+  if (userByEthereumId) {
+    return res.status(409).json({ message: "Ethereum ID is already in use" });
+  }
   const hashpassword = await bcrypt.hash(password, 10);
   const newUser = new User({
     username,
     email,
     password: hashpassword,
+    ethereumId,
   });
 
   await newUser.save();
