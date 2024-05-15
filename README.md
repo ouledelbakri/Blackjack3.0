@@ -5,6 +5,7 @@ Groupe Blackjack Front
 # Execute in local :
 
     - npm install on both client and server directories
+    - npm install on blockchain directory ( which is inside the client directory )
     - npm start for server
     - npm run dev for client
 
