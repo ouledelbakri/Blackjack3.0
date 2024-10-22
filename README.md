@@ -1,4 +1,4 @@
-# Blackjack_grp
+# Application Blackjack 3.0
 
 Groupe Blackjack Front
 
